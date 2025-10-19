@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useProducts } from "@/hooks/useProducts";
 import { NewProductDialog } from "@/components/NewProductDialog";
 import { ProductCard } from "@/components/ProductCard";
+import { EditProductDialog } from "@/components/EditProductDialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +23,7 @@ import {
   XCircle,
   TrendingUp,
 } from "lucide-react";
+import { Product } from "@/types/products";
 
 const Products = () => {
   const {
@@ -37,6 +39,7 @@ const Products = () => {
   } = useProducts();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -44,9 +47,8 @@ const Products = () => {
     setRefreshing(false);
   };
 
-  const handleEditProduct = (product: any) => {
-    // Implementar edição de produto
-    console.log("Editar produto:", product);
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
   };
 
   const handleToggleStatus = async (id: number) => {
@@ -227,6 +229,14 @@ const Products = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo de Edição */}
+      <EditProductDialog
+        open={!!editingProduct}
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onUpdateProduct={updateProduct}
+      />
 
       {/* Guia Rápido */}
       <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">

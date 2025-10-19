@@ -1,5 +1,5 @@
-// src/components/NewProductDialog.tsx
-import { useState } from "react";
+// src/components/EditProductDialog.tsx
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -23,10 +22,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Product, ProductUpdate } from "@/types/products";
 
-const productFormSchema = z.object({
+const editProductFormSchema = z.object({
   nome: z.string().min(1, "Nome do produto é obrigatório"),
   descricao_detalhada: z
     .string()
@@ -34,51 +35,76 @@ const productFormSchema = z.object({
   prompt_consultivo: z
     .string()
     .min(100, "Prompt consultivo deve ter pelo menos 100 caracteres"),
+  active: z.boolean(),
 });
 
-type ProductFormData = z.infer<typeof productFormSchema>;
+type EditProductFormData = z.infer<typeof editProductFormSchema>;
 
-interface NewProductDialogProps {
-  onAddProduct: (product: ProductFormData) => Promise<boolean>;
+interface EditProductDialogProps {
+  open: boolean;
+  product: Product | null;
+  onClose: () => void;
+  onUpdateProduct: (id: number, product: ProductUpdate) => Promise<boolean>;
 }
 
-export function NewProductDialog({ onAddProduct }: NewProductDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditProductDialog({
+  open,
+  product,
+  onClose,
+  onUpdateProduct,
+}: EditProductDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<ProductFormData>({
-    resolver: zodResolver(productFormSchema),
+  const form = useForm<EditProductFormData>({
+    resolver: zodResolver(editProductFormSchema),
     defaultValues: {
-      nome: "",
-      descricao_detalhada: "",
-      prompt_consultivo: "",
+      nome: product?.nome || "",
+      descricao_detalhada: product?.descricao_detalhada || "",
+      prompt_consultivo: product?.prompt_consultivo || "",
+      active: product?.active ?? true,
     },
   });
 
-  const onSubmit = async (data: ProductFormData) => {
+  useEffect(() => {
+    if (product) {
+      form.reset({
+        nome: product.nome || "",
+        descricao_detalhada: product.descricao_detalhada || "",
+        prompt_consultivo: product.prompt_consultivo || "",
+        active: product.active ?? true,
+      });
+    }
+  }, [product]);
+
+  const onSubmit = async (data: EditProductFormData) => {
+    if (!product) return;
     try {
       setIsSubmitting(true);
 
-      const success = await onAddProduct(data);
+      const success = await onUpdateProduct(product.id, {
+        nome: data.nome,
+        descricao_detalhada: data.descricao_detalhada,
+        prompt_consultivo: data.prompt_consultivo,
+        active: data.active,
+      });
 
       if (success) {
-        form.reset();
-        setOpen(false);
-        toast.success("Produto cadastrado com sucesso!", {
-          description: "O novo produto/serviço foi adicionado ao catálogo.",
+        toast.success("Produto atualizado com sucesso!", {
+          description: "As alterações foram salvas.",
           duration: 3000,
         });
+        onClose();
       } else {
-        toast.error("Erro ao cadastrar produto", {
+        toast.error("Erro ao atualizar produto", {
           description: "Ocorreu um erro inesperado. Tente novamente.",
           duration: 4000,
         });
       }
     } catch (error) {
-      console.error("Erro ao adicionar produto:", error);
+      console.error("Erro ao atualizar produto:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Erro desconhecido";
-      toast.error("Erro ao cadastrar produto", {
+      toast.error("Erro ao atualizar produto", {
         description: errorMessage,
         duration: 5000,
       });
@@ -88,19 +114,17 @@ export function NewProductDialog({ onAddProduct }: NewProductDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Produto/Serviço
-        </Button>
-      </DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Produto/Serviço</DialogTitle>
+          <DialogTitle>Editar Produto/Serviço</DialogTitle>
           <DialogDescription>
-            Preencha as informações do novo produto ou serviço para adicionar ao
-            catálogo.
+            Atualize as informações do produto/serviço selecionado.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -167,23 +191,40 @@ export function NewProductDialog({ onAddProduct }: NewProductDialogProps) {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="active"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Status do Produto</FormLabel>
+                    <DialogDescription>
+                      Defina se o produto/serviço está ativo no catálogo.
+                    </DialogDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isSubmitting}
-              >
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !product}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
                   </>
                 ) : (
-                  "Salvar Produto"
+                  "Salvar Alterações"
                 )}
               </Button>
             </DialogFooter>

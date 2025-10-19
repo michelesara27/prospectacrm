@@ -530,4 +530,3 @@ DROP CONSTRAINT IF EXISTS fk_messages_product;
 
 -- Remover índice se existir
 DROP INDEX IF EXISTS idx_messages_id_product;
-
