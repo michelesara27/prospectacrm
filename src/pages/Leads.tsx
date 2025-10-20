@@ -1,5 +1,5 @@
 // src/pages/Leads.tsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useLeads } from "@/hooks/useLeads";
 import { useProducts } from "@/hooks/useProducts";
 import { MessagesDialog } from "@/components/MessagesDialog";
@@ -41,7 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { STATUS_CONFIG } from "@/types/leads";
+import { STATUS_CONFIG, CONTACT_CHANNEL_OPTIONS } from "@/types/leads";
+import { messagesService } from "@/services/messagesService";
 
 const Leads = () => {
   const {
@@ -65,6 +66,8 @@ const Leads = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [contactMediumFilter, setContactMediumFilter] = useState<string>("all");
+  const [latestChannelByLead, setLatestChannelByLead] = useState<Map<number, string>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -103,22 +106,39 @@ const Leads = () => {
     }
   };
 
+  // Carregar último meio de contato por lead (agrupado)
+  const loadLatestChannels = async () => {
+    const { data, error } = await messagesService.getMessagesGroupedByLead();
+    if (error || !data) return;
+    const map = new Map<number, string>();
+    data.forEach((group) => {
+      const latest = group.messages?.[0];
+      if (latest) {
+        const normalized = latest.meio_de_contato === "e-mail" ? "email" : latest.meio_de_contato;
+        map.set(group.lead.id, normalized);
+      }
+    });
+    setLatestChannelByLead(map);
+  };
+  useEffect(() => {
+    loadLatestChannels();
+  }, []);
+
   // Filtrar leads baseado na busca e status
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
       lead.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lead.email &&
-        lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (lead.instagram &&
-        lead.instagram.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (lead.instagram && lead.instagram.toLowerCase().includes(searchTerm.toLowerCase())) ||
       lead.decisor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.telefone.includes(searchTerm);
 
-    const matchesStatus =
-      statusFilter === "all" || lead.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
+    const leadLatestChannel = latestChannelByLead.get(lead.id);
+    const matchesChannel = contactMediumFilter === "all" || leadLatestChannel === contactMediumFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesChannel;
   });
 
   // Estatísticas para exibição
@@ -248,8 +268,28 @@ const Leads = () => {
             <SelectItem value="TALVEZ">Talvez</SelectItem>
             <SelectItem value="MEDIO INTERESSE">Médio Interesse</SelectItem>
             <SelectItem value="MUITO INTERESSADO">Muito Interessado</SelectItem>
+            <SelectItem value="OCUPADO">Ocupado</SelectItem>
           </SelectContent>
         </Select>
+        <Select
+          value={contactMediumFilter}
+          onValueChange={setContactMediumFilter}
+          disabled={loading}
+        >
+          <SelectTrigger className="w-full sm:w-[220px]">
+            <SelectValue placeholder="Filtrar por meio de contato" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os meios</SelectItem>
+            {/* Opções de meio de contato */}
+            {CONTACT_CHANNEL_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select
+        >
       </div>
 
       {/* Lista de Leads */}

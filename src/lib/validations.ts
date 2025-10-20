@@ -40,6 +40,7 @@ export const LEAD_STATUS = [
   { value: "TALVEZ", label: "Talvez" },
   { value: "MEDIO INTERESSE", label: "Médio Interesse" },
   { value: "MUITO INTERESSADO", label: "Muito Interessado" },
+  { value: "OCUPADO", label: "Ocupado" },
 ] as const;
 
 // Opções para o campo active
@@ -130,6 +131,7 @@ export const leadFormSchema = z.object({
       "TALVEZ",
       "MEDIO INTERESSE",
       "MUITO INTERESSADO",
+      "OCUPADO",
     ])
     .optional(),
 

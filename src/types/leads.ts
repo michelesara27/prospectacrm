@@ -7,7 +7,8 @@ export type LeadStatus =
   | "SEM INTERESSE"
   | "TALVEZ"
   | "MEDIO INTERESSE"
-  | "MUITO INTERESSADO";
+  | "MUITO INTERESSADO"
+  | "OCUPADO";
 
 // Tipos para Canais de Contato
 export type ContactChannel =
@@ -15,7 +16,8 @@ export type ContactChannel =
   | "whatsapp"
   | "instagram"
   | "pessoalmente"
-  | "e-mail";
+  | "email"
+  | "ligacao";
 
 // Tipos para Tipo de Mensagem
 export type MessageType = "primeiro contato" | "followup";
@@ -178,6 +180,11 @@ export const STATUS_CONFIG = {
     color: "bg-green-500",
     textColor: "text-green-500",
   },
+  OCUPADO: {
+    label: "Ocupado",
+    color: "bg-indigo-500",
+    textColor: "text-indigo-500",
+  },
 } as const;
 
 // Constantes para opções de formulário
@@ -218,6 +225,7 @@ export const LEAD_STATUS_OPTIONS = [
   { value: "TALVEZ", label: "Talvez" },
   { value: "MEDIO INTERESSE", label: "Médio Interesse" },
   { value: "MUITO INTERESSADO", label: "Muito Interessado" },
+  { value: "OCUPADO", label: "Ocupado" },
 ] as const;
 
 export const ACTIVE_OPTIONS = [
@@ -230,7 +238,8 @@ export const CONTACT_CHANNEL_OPTIONS = [
   { value: "whatsapp", label: "WhatsApp" },
   { value: "instagram", label: "Instagram" },
   { value: "pessoalmente", label: "Pessoalmente" },
-  { value: "e-mail", label: "E-mail" },
+  { value: "email", label: "E-mail" },
+  { value: "ligacao", label: "Ligação" },
 ] as const;
 
 export const MESSAGE_TYPE_OPTIONS = [

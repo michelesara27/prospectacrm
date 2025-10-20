@@ -31,6 +31,7 @@ import {
   Instagram,
   User,
   Mail,
+  Phone,
 } from "lucide-react";
 import { messagesService } from "@/services/messagesService";
 import { toast } from "sonner";
@@ -65,6 +66,7 @@ const MEIO_CONTATO_OPTIONS = [
   { value: "instagram", label: "Instagram", icon: Instagram },
   { value: "pessoalmente", label: "Pessoalmente", icon: User },
   { value: "email", label: "E-mail", icon: Mail },
+  { value: "ligacao", label: "Ligação", icon: Phone },
 ];
 
 const TIPO_MENSAGEM_OPTIONS = [
@@ -117,13 +119,12 @@ export function MessagesDialog({
         return;
       }
 
-      // Ordenar por data (mais recentes primeiro) e pegar apenas os últimos 3
+      // Ordenar por data (mais recentes primeiro)
       const sortedMessages = (data || [])
         .sort(
           (a, b) =>
             new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
-        )
-        .slice(0, 3);
+        );
 
       setMessages(sortedMessages);
     } catch (error) {
@@ -218,56 +219,42 @@ export function MessagesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Mensagens - {leadName}
-          </DialogTitle>
+          <DialogTitle>Mensagens do Lead</DialogTitle>
           <DialogDescription>
-            Visualize os últimos 3 registros de mensagens e adicione novas
-            mensagens para este lead.
+            Visualize e adicione mensagens para <strong>{leadName}</strong>.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="flex flex-col gap-6 overflow-hidden">
-          {/* Lista dos últimos 3 registros */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Últimas 3 mensagens
-            </h3>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-sm text-muted-foreground">
-                  Carregando mensagens...
+        {/* Lista de mensagens */}
+        <div className="space-y-4">
+          {loading ? (
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                Carregando mensagens...
+              </CardContent>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[50vh] pr-4">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma mensagem encontrada para este lead.
+                  </p>
                 </div>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma mensagem encontrada para este lead.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Adicione a primeira mensagem usando o formulário abaixo.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[280px] overflow-y-auto pr-2">
-                {messages.map((message) => {
-                  const IconComponent = getMeioContatoIcon(
-                    message.meio_de_contato
-                  );
-                  return (
+              ) : (
+                <div className="space-y-2">
+                  {messages.map((message) => (
                     <Card
                       key={message.id}
-                      className={`${getMessageTypeColor(
-                        message.identifica
-                      )} border transition-all hover:shadow-sm`}
+                      className="border hover:shadow-sm transition-all"
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <IconComponent className="h-4 w-4 flex-shrink-0" />
+                            {(() => {
+                              const Icon = getMeioContatoIcon(message.meio_de_contato);
+                              return <Icon className="h-4 w-4 flex-shrink-0" />;
+                            })()}
                             <Badge variant="secondary" className="text-xs">
                               {message.identifica}
                             </Badge>
@@ -278,161 +265,101 @@ export function MessagesDialog({
                           <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
                             <Calendar className="h-3 w-3" />
                             <span className="whitespace-nowrap">
-                              {new Date(message.data_hora).toLocaleString(
-                                "pt-BR",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
+                              {new Date(message.data_hora).toLocaleString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm leading-relaxed line-clamp-2 break-words">
+                        <p className={`text-sm leading-relaxed break-words border rounded-md p-3 ${getMessageTypeColor(message.identifica)}`}>
                           {message.mensagem_primeiro_contato}
                         </p>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* Formulário para nova mensagem */}
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <Label>Meio de Contato</Label>
+              <Select
+                value={formData.meio_de_contato}
+                onValueChange={(v) => handleInputChange("meio_de_contato", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEIO_CONTATO_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo</Label>
+              <Select
+                value={formData.tipo_mensagem}
+                onValueChange={(v) => handleInputChange("tipo_mensagem", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPO_MENSAGEM_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Identificação</Label>
+              <Select
+                value={formData.identifica}
+                onValueChange={(v) => handleInputChange("identifica", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {IDENTIFICA_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Formulário para nova mensagem */}
-          <div className="border-t pt-4 space-y-4 flex-shrink-0">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Adicionar nova mensagem
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Meio de contato */}
-              <div className="space-y-2">
-                <Label htmlFor="meio-contato" className="text-sm font-medium">
-                  Meio de Contato <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.meio_de_contato}
-                  onValueChange={(value) =>
-                    handleInputChange("meio_de_contato", value)
-                  }
-                  disabled={addingMessage}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEIO_CONTATO_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <option.icon className="h-4 w-4" />
-                          {option.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tipo */}
-              <div className="space-y-2">
-                <Label htmlFor="tipo-mensagem" className="text-sm font-medium">
-                  Tipo <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.tipo_mensagem}
-                  onValueChange={(value) =>
-                    handleInputChange("tipo_mensagem", value)
-                  }
-                  disabled={addingMessage}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIPO_MENSAGEM_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Identifica */}
-              <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                <Label htmlFor="identifica" className="text-sm font-medium">
-                  Identifica <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.identifica}
-                  onValueChange={(value) =>
-                    handleInputChange("identifica", value)
-                  }
-                  disabled={addingMessage}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {IDENTIFICA_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Campo de mensagem */}
-            <div className="space-y-2">
-              <Label htmlFor="mensagem" className="text-sm font-medium">
-                Mensagem <span className="text-red-500">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Textarea
-                  id="mensagem"
-                  placeholder="Digite o conteúdo da mensagem..."
-                  value={formData.mensagem_primeiro_contato}
-                  onChange={(e) =>
-                    handleInputChange(
-                      "mensagem_primeiro_contato",
-                      e.target.value
-                    )
-                  }
-                  className="flex-1 min-h-[80px] resize-none"
-                  disabled={addingMessage}
-                />
-                <Button
-                  onClick={handleAddMessage}
-                  disabled={
-                    !formData.mensagem_primeiro_contato.trim() ||
-                    !formData.meio_de_contato ||
-                    !formData.tipo_mensagem ||
-                    !formData.identifica ||
-                    addingMessage
-                  }
-                  className="self-end"
-                  size="sm"
-                >
-                  {addingMessage ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+          <div>
+            <Label>Mensagem</Label>
+            <Textarea
+              placeholder="Digite a mensagem"
+              value={formData.mensagem_primeiro_contato}
+              onChange={(e) => handleInputChange("mensagem_primeiro_contato", e.target.value)}
+              className="min-h-[100px]"
+            />
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
+        <DialogFooter>
+          <Button onClick={handleAddMessage} disabled={addingMessage || !leadId}>
+            <Send className="h-4 w-4 mr-2" /> Adicionar mensagem
           </Button>
         </DialogFooter>
       </DialogContent>

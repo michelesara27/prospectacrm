@@ -9,6 +9,9 @@ import {
   User,
   Mail,
   MessageSquare,
+  Phone,
+  PhoneCall,
+  Smartphone,
 } from "lucide-react";
 
 interface Message {
@@ -32,6 +35,7 @@ const MEIO_CONTATO_ICONS = {
   pessoalmente: User,
   email: Mail,
   "e-mail": Mail,
+  ligacao: Phone,
 };
 
 export function MessageCard({ message }: MessageCardProps) {
@@ -92,7 +96,7 @@ export function MessageCard({ message }: MessageCardProps) {
             </span>
           </div>
         </div>
-        <p className="text-sm leading-relaxed line-clamp-3 break-words">
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
           {message.mensagem_primeiro_contato}
         </p>
       </CardContent>
