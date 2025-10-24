@@ -89,10 +89,8 @@ Detalhes completos estão em `docs/architecture.md` e `docs/api.md`.
 - Variáveis do Supabase ausentes: confirmar `.env` com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
 - Erros de compilação de JSX: verificar componentes e fechamento de tags.
 
-## Problemas Comuns
+## Vídeo explicativo
 
 https://youtu.be/gv0d9Q7Soc4
 
 ---
-
-Este repositório está pronto para ser publicado no GitHub com a documentação completa e links para o diretório `docs/`.
