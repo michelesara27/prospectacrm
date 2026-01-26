@@ -22,118 +22,10 @@ Esses valores estão disponíveis no painel do seu projeto Supabase em Settings 
 
 O sistema trabalha com três tabelas principais: `leads`, `products` e `messages`.
 
-### Tabela `products`
 
 ```sql
-create table if not exists public.products (
-  id bigserial primary key,
-  nome text not null,
-  descricao_detalhada text not null,
-  prompt_consultivo text not null,
-  active boolean default true,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+CREATE SEQUENCE IF NOT EXISTS leads_id_seq START 1;
 
-create index if not exists idx_products_active on public.products(active);
-create index if not exists idx_products_created_at on public.products(created_at desc);
-```
-
-### Tabela `leads`
-
-Por compatibilidade, o sistema suporta tanto `id_produto` quanto `id_product`. Se sua base usa o nome em português, crie `id_produto`.
-
-```sql
-create table if not exists public.leads (
-  id bigserial primary key,
-  nome text not null,
-  instagram text null,
-  telefone text not null,
-  decisor text not null,
-  endereco text not null,
-  cidade text not null,
-  estado text not null,
-  website text null,
-  email text null,
-  -- use apenas UM destes, conforme sua base
-  id_produto bigint null references public.products(id),
-  -- id_product bigint null references public.products(id),
-  status text not null,
-  active text not null default 'yes',
-  observacoes text null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create index if not exists idx_leads_active on public.leads(active);
-create index if not exists idx_leads_status on public.leads(status);
-create index if not exists idx_leads_created_at on public.leads(created_at desc);
-```
-
-Opcionalmente, adicione uma restrição para `status` conforme os valores da aplicação:
-
-```sql
-alter table public.leads
-  add constraint leads_status_check
-  check (status in (
-    'NENHUM',
-    'SEM RETORNO',
-    'SEM INTERESSE',
-    'TALVEZ',
-    'MEDIO INTERESSE',
-    'MUITO INTERESSADO'
-  ));
-```
-
-### Tabela `messages`
-
-```sql
-create table if not exists public.messages (
-  id bigserial primary key,
-  id_lead bigint not null references public.leads(id) on delete cascade,
-  mensagem_primeiro_contato text not null,
-  meio_de_contato text not null,
-  tipo_mensagem text not null,
-  identifica text not null,
-  data_hora timestamptz default now(),
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create index if not exists idx_messages_lead on public.messages(id_lead);
-create index if not exists idx_messages_created_at on public.messages(created_at desc);
-```
-
-### Observações de Segurança (RLS)
-
-- Em ambientes públicos, use Row Level Security (RLS) e policies adequadas.
-- Para desenvolvimento simples, você pode manter RLS desativado temporariamente.
-
-## Executando Localmente
-
-1) Instalar dependências:
-```
-npm install
-```
-
-2) Rodar o servidor de desenvolvimento:
-```
-npm run dev
-```
-
-3) Build e preview de produção:
-```
-npm run build
-npm run preview
-```
-
-## Dicas
-
-- Mantenha os índices para performance de listagens e buscas.
-- Atualize as policies do Supabase conforme seu modelo de acesso e autenticação.
-
-
-## SQL completo
 CREATE TABLE public.leads (
   id integer NOT NULL DEFAULT nextval('leads_id_seq'::regclass),
   data_hora timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -143,7 +35,7 @@ CREATE TABLE public.leads (
   decisor character varying NOT NULL,
   endereco character varying NOT NULL,
   cidade character varying NOT NULL,
-  estado character NOT NULL,
+  estado char(2) NOT NULL,
   instagram character varying,
   website character varying,
   status character varying NOT NULL DEFAULT 'SEM RETORNO'::character varying CHECK (status::text = ANY (ARRAY['NENHUM'::character varying, 'SEM RETORNO'::character varying, 'SEM INTERESSE'::character varying, 'TALVEZ'::character varying, 'MEDIO INTERESSE'::character varying, 'MUITO INTERESSADO'::character varying]::text[])),
@@ -154,6 +46,7 @@ CREATE TABLE public.leads (
   CONSTRAINT leads_pkey PRIMARY KEY (id)
 );
 
+CREATE SEQUENCE IF NOT EXISTS messages_id_seq START 1;
 CREATE TABLE public.messages (
   id integer NOT NULL DEFAULT nextval('messages_id_seq'::regclass),
   data_hora timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -412,6 +305,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER update_products_updated_at 
     BEFORE UPDATE ON public.products 
     FOR EACH ROW 
@@ -530,3 +424,89 @@ DROP CONSTRAINT IF EXISTS fk_messages_product;
 
 -- Remover índice se existir
 DROP INDEX IF EXISTS idx_messages_id_product;
+
+
+ALTER TABLE public.messages 
+DROP CONSTRAINT IF EXISTS messages_tipo_mensagem_check;
+
+
+
+ALTER TABLE public.messages 
+ADD CONSTRAINT messages_tipo_mensagem_check 
+CHECK (
+    tipo_mensagem::text = ANY (
+        ARRAY[
+            'primeiro contato'::character varying, 
+            'followup'::character varying,
+            'resposta'::character varying  -- ← ADICIONAR
+        ]::text[]
+    )
+);
+
+
+
+ALTER TABLE public.messages 
+DROP CONSTRAINT IF EXISTS messages_meio_de_contato_check;
+
+
+
+ALTER TABLE public.messages 
+ADD CONSTRAINT messages_meio_de_contato_check 
+CHECK (
+    meio_de_contato::text = ANY (
+        ARRAY[
+            'facebook'::character varying, 
+            'whatsapp'::character varying, 
+            'instagram'::character varying, 
+            'pessoalmente'::character varying, 
+            'e-mail'::character varying  -- ← COM TRAÇO
+        ]::text[]
+    )
+);
+
+
+
+
+CREATE TABLE Alertas (
+    id BIGSERIAL PRIMARY KEY,
+    data_atual TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    codigo_lead VARCHAR(20) NOT NULL,
+    texto_aviso TEXT NOT NULL,
+    UNIQUE(codigo_lead),
+    CHECK(codigo_lead <> ''),
+    CHECK(LENGTH(texto_aviso) >= 5)
+);
+
+CREATE INDEX idx_alertas_data_atual ON Alertas(data_atual);
+CREATE INDEX idx_alertas_codigo_lead ON Alertas(codigo_lead);
+```
+
+### Observações de Segurança (RLS)
+
+- Em ambientes públicos, use Row Level Security (RLS) e policies adequadas.
+- Para desenvolvimento simples, você pode manter RLS desativado temporariamente.
+
+## Executando Localmente
+
+1) Instalar dependências:
+```
+npm install
+```
+
+2) Rodar o servidor de desenvolvimento:
+```
+npm run dev
+```
+
+3) Build e preview de produção:
+```
+npm run build
+npm run preview
+```
+
+## Dicas
+
+- Mantenha os índices para performance de listagens e buscas.
+- Atualize as policies do Supabase conforme seu modelo de acesso e autenticação.
+
+
